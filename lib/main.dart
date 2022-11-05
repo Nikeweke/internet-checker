@@ -91,13 +91,19 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _watchInternetConnection() async {
     bool isConnected = await SimpleConnectionChecker.isConnectedToInternet();
+
     if (isConnected == _isConnected) { 
       return;
     }   
+    if (_journal.isNotEmpty) {
+      var firstRecord = _journal[0];
+      if (firstRecord.connectionState == isConnected) {
+        return;
+      }
+    }
 
     if (isConnected) {
       SoundService.playGoodSound();
-
     } else {
       SoundService.playSadSound();
     }
@@ -107,21 +113,12 @@ class _MyHomePageState extends State<MyHomePage> {
     var logMessage = "($time) Connection: $connectionStateWord";
     var toastMessage = "Connection was changed - $connectionStateWord";
 
-    if (_journal.isEmpty) {
-      _journal.insert(0, JournalRecord(isConnected, logMessage));
+    _journal.insert(0, JournalRecord(isConnected, logMessage));
 
-    } else {
-      var firstRecord = _journal[0];
-      if (firstRecord.connectionState != isConnected) {
-        _journal.insert(0, JournalRecord(isConnected, logMessage));
-      }
-
-      if (_journal.length > 5) {
-        _journal.removeLast();
-      }
+    if (_journal.length > 5) {
+      _journal.removeLast();
     }
-
-
+      
     await WinToast.instance().showToast(
       type: ToastType.text01, 
       title: toastMessage,
@@ -228,8 +225,8 @@ class _MyHomePageState extends State<MyHomePage> {
               return Align(
                 alignment: Alignment.center,
                 child: Container(
-                  height: 100,
-                  width: 100,
+                  height: 50,
+                  width: 50,
                   color: squareColor,
                 ),
               );
