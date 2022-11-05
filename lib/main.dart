@@ -13,6 +13,12 @@ import 'package:internet_checker/services/sound.service.dart';
 import 'package:internet_checker/services/date.service.dart';
 
 
+class JournalRecord {
+  JournalRecord(this.connectionState, this.text);
+  bool connectionState = false;
+  String text = '';
+} 
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,9 +67,9 @@ class _MyHomePageState extends State<MyHomePage> {
   late Timer _timer;
   final SystemTray _systemTray = SystemTray();
 
-  bool _isConnected = false;
+  bool _isConnected = true;
   bool _isUserNotifiedAboutTray = false;
-  var _journal = <String>[]; // journal of connection changes
+  final _journal = <JournalRecord>[]; // journal of connection changes
 
   @override
   void initState() {
@@ -71,18 +77,10 @@ class _MyHomePageState extends State<MyHomePage> {
     _initSystemTray();
     _initWindowsToasts();
 
-    // setting the isConnected flag and start interval timer for checking connection
-    () async {
-      bool isConnected = await SimpleConnectionChecker.isConnectedToInternet();
-      setState(() {
-        _isConnected = isConnected;
-      });
-
-      // set interval timer that triggers internet-check
-      _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-        _watchInternetConnection();
-      });
-    } ();
+    // set interval timer that triggers internet-check
+    _timer = Timer.periodic(Duration(seconds: 2), (timer) {
+      _watchInternetConnection();
+    });
   }
 
   void updateIsUserNotifiedAboutTray() {
@@ -104,15 +102,29 @@ class _MyHomePageState extends State<MyHomePage> {
       SoundService.playSadSound();
     }
 
-    var connectionState = isConnected ? 'ON' : 'OFF';
+    var time = DateService.getJournalDateNow();
+    var connectionStateWord = isConnected ? 'ON' : 'OFF';
+    var logMessage = "($time) Connection: $connectionStateWord";
+    var toastMessage = "Connection was changed - $connectionStateWord";
+
+    if (_journal.isEmpty) {
+      _journal.insert(0, JournalRecord(isConnected, logMessage));
+
+    } else {
+      var firstRecord = _journal[0];
+      if (firstRecord.connectionState != isConnected) {
+        _journal.insert(0, JournalRecord(isConnected, logMessage));
+      }
+
+      if (_journal.length > 5) {
+        _journal.removeLast();
+      }
+    }
+
+
     await WinToast.instance().showToast(
       type: ToastType.text01, 
-      title: "Connection was changed - $connectionState",
-    );
-
-    var time = DateService.getJournalDateNow();
-    _journal.add(
-      "($time) Connection: $connectionState"
+      title: toastMessage,
     );
 
     setState(() {
@@ -163,14 +175,14 @@ class _MyHomePageState extends State<MyHomePage> {
     
   Widget _buildJournalList() {
     var list = ListView.separated(
-      reverse: true,
+      // reverse: true,
       padding: const EdgeInsets.all(20.0),
       scrollDirection: Axis.vertical,
       shrinkWrap: true,
       itemCount: _journal.length,
       itemBuilder: (context, index) {
         var item = _journal[index];
-        return Text(item);
+        return Text(item.text, style: TextStyle(fontSize: 13));
       },
       separatorBuilder: (context, index) {
         return Divider();
