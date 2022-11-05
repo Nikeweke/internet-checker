@@ -2,13 +2,16 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart' hide MenuItem;
-import 'package:audioplayers/audioplayers.dart';
 import 'package:simple_connection_checker/simple_connection_checker.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:win_toast/win_toast.dart';
 
 import 'package:internet_checker/app_consts.dart';
 import 'package:internet_checker/components/titlebar.dart';
+import 'package:internet_checker/services/sound.service.dart';
+import 'package:internet_checker/services/date.service.dart';
+
 
 
 void main() async {
@@ -56,22 +59,19 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   late Timer _timer;
-  // final AppWindow _appWindow = AppWindow();
   final SystemTray _systemTray = SystemTray();
-  // final Menu _menuMain = Menu();
-  // final Menu _menuSimple = Menu();
 
-  // bool _toogleTrayIcon = true;
-  // bool _toogleMenu = true;
   bool _isConnected = false;
   bool _isUserNotifiedAboutTray = false;
+  var _journal = <String>[]; // journal of connection changes
 
   @override
   void initState() {
     super.initState();
-    initSystemTray();
+    _initSystemTray();
+    _initWindowsToasts();
 
-    // setting the isConnected flag 
+    // setting the isConnected flag and start interval timer for checking connection
     () async {
       bool isConnected = await SimpleConnectionChecker.isConnectedToInternet();
       setState(() {
@@ -86,22 +86,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void updateIsUserNotifiedAboutTray() {
-    print("=============>");
     setState(() {
       _isUserNotifiedAboutTray = true;
     });
-  }
-
-  Future<void> _playSound(String soundName) async {
-    AudioPlayer().play(AssetSource('audio/$soundName.wav'));
-  }
-
-  void _playGoodSound() {
-    _playSound('good');
-  }
-
-  void _playSadSound() {
-    _playSound('bad');
   }
 
   Future<void> _watchInternetConnection() async {
@@ -111,67 +98,37 @@ class _MyHomePageState extends State<MyHomePage> {
     }   
 
     if (isConnected) {
-      _playGoodSound();
+      SoundService.playGoodSound();
 
     } else {
-      _playSadSound();
+      SoundService.playSadSound();
     }
+
+    var connectionState = isConnected ? 'ON' : 'OFF';
+    await WinToast.instance().showToast(
+      type: ToastType.text01, 
+      title: "Connection was changed - $connectionState",
+    );
+
+    var time = DateService.getJournalDateNow();
+    _journal.add(
+      "($time) Connection: $connectionState"
+    );
 
     setState(() {
       _isConnected = isConnected;
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    var squareColor = _isConnected ? Colors.green : Colors.red;
-    var label = _isConnected 
-        ? 'Internet: ON ⚡️' 
-        : 'Internet: OFF 🌚';
-
-    var content = Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-
-          LayoutBuilder(
-            builder: (context, constraints) {
-              // final size = min(constraints.maxWidth, constraints.maxHeight);
-              return Align(
-                alignment: Alignment.center,
-                child: Container(
-                  height: 100,
-                  width: 100,
-                  color: squareColor,
-                ),
-              );
-            },
-          ),
-          
-          Text(
-            label,
-            style: Theme.of(context).textTheme.headline5,
-          ),
-        ],
-      ),
-    ); 
-    
-    return Scaffold(
-        body: WindowBorder(
-          color: const Color(0xFF805306),
-          width: 1,
-          child: Column(
-            children: [
-              TitleBar(_isUserNotifiedAboutTray, updateIsUserNotifiedAboutTray),
-              content,
-            ],
-          ),
-        )
-      );
+  Future<void> _initWindowsToasts() async {
+    await WinToast.instance().initialize(
+      appName: AppConstants.appName,
+      productName: AppConstants.appName,
+      companyName: AppConstants.appName,
+    );
   }
 
-
-  Future<void> initSystemTray() async {
+  Future<void> _initSystemTray() async {
     String path = Platform.isWindows 
       ? 'assets/app_icon.ico' 
       : 'assets/app_icon.png';
@@ -204,4 +161,97 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
     
+  Widget _buildJournalList() {
+    var list = ListView.separated(
+      reverse: true,
+      padding: const EdgeInsets.all(20.0),
+      scrollDirection: Axis.vertical,
+      shrinkWrap: true,
+      itemCount: _journal.length,
+      itemBuilder: (context, index) {
+        var item = _journal[index];
+        return Text(item);
+      },
+      separatorBuilder: (context, index) {
+        return Divider();
+      },
+    );
+
+    var container = Container(
+      // margin: const EdgeInsets.all(15.0),
+      // padding: const EdgeInsets.all(3.0),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade400)
+      ),
+      child: list,
+    );
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minHeight: 35.0,
+        maxHeight: 160.0,
+      ),
+      child: container,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var squareColor = Colors.green;
+    var label = 'Internet: ON ⚡️';
+
+    if (!_isConnected) {
+      squareColor = Colors.red;
+      label = 'Internet: OFF 🌚';
+    } 
+
+    var content = Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // final size = min(constraints.maxWidth, constraints.maxHeight);
+              return Align(
+                alignment: Alignment.center,
+                child: Container(
+                  height: 100,
+                  width: 100,
+                  color: squareColor,
+                ),
+              );
+            },
+          ),
+          
+          Text(
+            label,
+            style: Theme.of(context).textTheme.headline5,
+          ),
+
+          SizedBox(height: 20),
+
+          _buildJournalList(),
+
+          // LayoutBuilder(
+          //   builder: (context, constraints) {
+          //     return Align(
+          //       alignment: Alignment.center,
+          //       child: _buildJournalList(),
+          //     );
+          //   },
+          // ),
+        ],
+      ),
+    ); 
+    
+    return Scaffold(
+        body: Column(
+            children: [
+              TitleBar(_isUserNotifiedAboutTray, updateIsUserNotifiedAboutTray),
+              content,
+            ],
+          ),
+    );
+  }
 }

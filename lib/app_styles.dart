@@ -4,10 +4,10 @@ import 'package:flutter/material.dart' hide MenuItem;
 
 class AppStyles {
   static final buttonColors = WindowButtonColors(
-    iconNormal: const Color(0xFF805306),
-    mouseOver: const Color(0xFFF6A00C),
+    iconNormal: Color.fromARGB(255, 126, 126, 126),
+    mouseOver: Color.fromARGB(255, 0, 38, 92),
     mouseDown: const Color(0xFF805306),
-    iconMouseOver: const Color(0xFF805306),
+    iconMouseOver: Color.fromARGB(255, 126, 126, 126),
     iconMouseDown: const Color(0xFFFFD500)
   );
 
