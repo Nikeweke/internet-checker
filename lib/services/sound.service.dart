@@ -1,8 +1,14 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:internet_checker/services/shared_prefs.service.dart';
 
 class SoundService {
   static Future<void> _playSound(String soundName) async {
     String audioPath = _audioPath(soundName);
+
+    if (SharedPrefs.isDisabledSounds()) {
+      return;
+    }
+
     AudioPlayer().play(AssetSource(audioPath));
   }
 

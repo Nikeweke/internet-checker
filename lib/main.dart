@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart' hide MenuItem;
+import 'package:internet_checker/services/dialogs.service.dart';
 import 'package:simple_connection_checker/simple_connection_checker.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
@@ -11,10 +12,13 @@ import 'package:internet_checker/app_consts.dart';
 import 'package:internet_checker/components/titlebar.dart';
 import 'package:internet_checker/services/sound.service.dart';
 import 'package:internet_checker/services/date.service.dart';
+import 'package:internet_checker/services/shared_prefs.service.dart';
 
 
 class JournalRecord {
+  
   JournalRecord(this.connectionState, this.text);
+
   bool connectionState = false;
   String text = '';
 } 
@@ -22,6 +26,8 @@ class JournalRecord {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  SharedPrefs.init();
 
   runApp(const MyApp());
 
@@ -90,7 +96,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _watchInternetConnection() async {
-    bool isConnected = await SimpleConnectionChecker.isConnectedToInternet();
+    bool isConnected = await SimpleConnectionChecker.isConnectedToInternet(
+      lookUpAddress: AppConstants.lookupAddreesForInternetCheck,
+    );
 
     if (isConnected == _isConnected) { 
       return;
@@ -119,10 +127,12 @@ class _MyHomePageState extends State<MyHomePage> {
       _journal.removeLast();
     }
       
-    await WinToast.instance().showToast(
-      type: ToastType.text01, 
-      title: toastMessage,
-    );
+    if (!SharedPrefs.isDisabledWinNotifications()) {
+      await WinToast.instance().showToast(
+        type: ToastType.text01, 
+        title: toastMessage,
+      );
+    } 
 
     setState(() {
       _isConnected = isConnected;
@@ -242,14 +252,23 @@ class _MyHomePageState extends State<MyHomePage> {
 
           _buildJournalList(),
 
-          // LayoutBuilder(
-          //   builder: (context, constraints) {
-          //     return Align(
-          //       alignment: Alignment.center,
-          //       child: _buildJournalList(),
-          //     );
-          //   },
-          // ),
+          SizedBox(height: 20),
+
+          Text(
+            AppConstants.appVersion,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+
+          TextButton.icon(
+            onPressed: () {
+              DialogsService.showSettingsDialog(context);
+            },
+            icon: Icon( 
+              Icons.settings,
+              size: 15.0,
+            ),
+            label: Text('settings', style: TextStyle(fontSize: 14),), // <-- Text
+          ),
         ],
       ),
     ); 

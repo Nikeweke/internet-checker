@@ -27,18 +27,18 @@ class TitleBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Padding(
-              padding: EdgeInsets.all(5), 
-              child: Text(
-                AppConstants.appName, 
-                style: TextStyle(
-                  color: Colors.white70
-                )
-              ),
-            ),
-
             Expanded(
-              child: MoveWindow(),
+              child: MoveWindow(
+                child: const Padding(
+                  padding: EdgeInsets.all(5), 
+                  child: Text(
+                    AppConstants.appName, 
+                    style: TextStyle(
+                      color: Colors.white70
+                    )
+                  ),
+                ),
+              ),
             ),
             WindowButtons(isUserNotifiedAboutTray, cbFn)
           ],

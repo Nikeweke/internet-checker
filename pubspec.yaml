@@ -42,6 +42,7 @@ dependencies:
   system_tray: ^2.0.2
   bitsdojo_window: ^0.1.5
   win_toast: ^0.1.1
+  shared_preferences: ^2.0.15
 
 dev_dependencies:
   flutter_test:
